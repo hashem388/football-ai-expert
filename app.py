@@ -1,6 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
-from google_search_results import GoogleSearch
+from serpapi import GoogleSearch
 
 # إعداد الصفحة
 st.set_page_config(page_title="Football AI Expert", layout="wide")
