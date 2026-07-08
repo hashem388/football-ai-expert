@@ -2,42 +2,70 @@ import streamlit as st
 import google.generativeai as genai
 from serpapi import GoogleSearch
 
-# إعداد الصفحة
+# إعداد الصفحة وتفعيل التجاوب مع الموبايل
 st.set_page_config(page_title="Football AI Expert", layout="wide")
 
-# إعداد مفاتيح الـ API
+# تصميم احترافي (الوضع المظلم + بطاقات كبار)
+st.markdown("""
+    <style>
+    .card {background-color: #1e1e1e; padding: 20px; border-radius: 15px; border: 1px solid #444; margin: 10px;}
+    .stButton>button {width: 100%; border-radius: 10px; height: 50px;}
+    </style>
+""", unsafe_allow_html=True)
+
+# مفاتيح الأمان
 with st.sidebar:
+    st.title("⚙️ الإعدادات")
     api_gemini = st.text_input("Gemini API Key", type="password")
     api_serp = st.text_input("SerpApi Key", type="password")
 
 if not api_gemini or not api_serp:
-    st.info("يرجى إدخال مفاتيح الـ API في القائمة الجانبية للبدء.")
+    st.info("يرجى إدخال المفاتيح في القائمة الجانبية.")
     st.stop()
 
 genai.configure(api_key=api_gemini)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# الأقسام
-tab1, tab2, tab3 = st.tabs(["⚽ الرئيسية", "🇪🇸 الدوري الإسباني", "🏆 خبير الفانتازي"])
+# 1. نظام البطاقات للدوريات
+st.title("⚽ المركز الرئيسي لكرة القدم")
+cols = st.columns(5)
+leagues = ["الدوري الإنجليزي", "الدوري الإسباني", "الدوري الإيطالي", "الدوري الألماني", "الدوري الفرنسي"]
 
-with tab1:
-    st.header("النتائج الحية والأخبار")
-    st.write("مرحباً بك في واجهة كرة القدم الذكية.")
+for i, league in enumerate(leagues):
+    with cols[i]:
+        if st.button(league):
+            st.session_state.active_league = league
 
-with tab2:
-    st.header("تحليل الدوري الإسباني")
-    prompt = st.text_input("عن ماذا تريد أن تسأل في الليغا؟")
-    if prompt:
-        search = GoogleSearch({"q": f"latest La Liga news {prompt}", "api_key": api_serp})
-        results = search.get_dict().get("organic_results", [])
-        context = str(results)
-        res = model.generate_content(f"أنت خبير دوري إسباني. أجب: {prompt} بناءً على: {context}").text
-        st.markdown(res)
+# 2. منطقة الشات الذكي (تتغير حسب الدوري)
+if "active_league" in st.session_state:
+    st.subheader(f"شات خاص: {st.session_state.active_league}")
+    
+    # اقتراحات ذكية للمستخدم
+    st.write("اقتراحات:")
+    col1, col2, col3 = st.columns(3)
+    if col1.button("أهم أخبار الانتقالات؟"): st.session_state.user_q = "أهم أخبار الانتقالات؟"
+    if col2.button("تحليل التشكيلة؟"): st.session_state.user_q = "تحليل التشكيلة؟"
+    if col3.button("نقاط ضعف الفريق؟"): st.session_state.user_q = "نقاط ضعف الفريق؟"
 
-with tab3:
-    st.header("خبير الفانتازي الذكي")
-    if st.button("تحليل أفضل لاعبي الجولة"):
-        search = GoogleSearch({"q": "Fantasy Premier League best performers last gameweek", "api_key": api_serp})
-        results = search.get_dict().get("organic_results", [])
-        res = model.generate_content(f"حلل أداء اللاعبين في الجولة الأخيرة بناءً على: {str(results)}").text
-        st.markdown(res)
+    # الشات
+    user_prompt = st.chat_input("اكتب سؤالك هنا...")
+    if "user_q" in st.session_state:
+        user_prompt = st.session_state.user_q
+        del st.session_state.user_q
+
+    if user_prompt:
+        with st.chat_message("assistant"):
+            search = GoogleSearch({"q": f"{st.session_state.active_league} {user_prompt}", "api_key": api_serp})
+            res = model.generate_content(f"أنت خبير في {st.session_state.active_league}. أجب على: {user_prompt}").text
+            st.markdown(res)
+
+# 3. إضافات سريعة (مسابقات ومقارنات)
+st.divider()
+st.subheader("🛠️ أدوات الخبير")
+tool_col1, tool_col2 = st.columns(2)
+with tool_col1:
+    if st.button("تحدي المسابقات والأسئلة"):
+        st.write("هل أنت جاهز؟ (جاري تحديث القاعدة...)")
+with tool_col2:
+    if st.button("مقارنة لاعبين (Head-to-Head)"):
+        st.write("أدخل اسم اللاعبين للمقارنة...")
